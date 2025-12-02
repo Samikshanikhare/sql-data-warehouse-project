@@ -1,0 +1,186 @@
+/*
+***********************************************************************************************************
+DDL SCRIPT :Gold Layer (Business & Analytics Layer)
+***********************************************************************************************************
+
+Contains aggregated, business-ready views for reporting and dashboards.
+Includes KPI calculations (MTD, QTD, YTD), Top 10 products, regional performance, and factory efficiency.
+Example: vw_kpi_overview, vw_top10_candies_mtd_qtd_ytd, vw_region_target_vs_actual
+*/
+
+
+
+SELECT TOP 5 * 
+FROM silver.candy_sales_clean;
+
+
+--Sales Performance (MTD, YTD)
+--This will give you Total Sales, Units, Profit for KPIs in Power BI.
+/*
+Use for:
+
+KPI cards → Total Sales, MTD, YTD, Units, Profit
+*/
+CREATE OR ALTER VIEW gold.vw_sales_performance AS
+SELECT 
+    GETDATE() AS Report_Date,
+
+    SUM(Sales) AS Total_Sales_Revenue,
+    SUM(Units) AS Total_Units_Sold,
+    SUM(Gross_Profit) AS Total_Gross_Profit,
+
+    -- Month-To-Date (MTD)
+    SUM(CASE 
+            WHEN MONTH(Order_Date) = MONTH(GETDATE()) 
+             AND YEAR(Order_Date) = YEAR(GETDATE())
+            THEN Sales ELSE 0 END) AS MTD_Sales,
+
+    SUM(CASE 
+            WHEN MONTH(Order_Date) = MONTH(GETDATE()) 
+             AND YEAR(Order_Date) = YEAR(GETDATE())
+            THEN Units ELSE 0 END) AS MTD_Units_Sold,
+
+    -- Year-To-Date (YTD)
+    SUM(CASE 
+            WHEN YEAR(Order_Date) = YEAR(GETDATE())
+            THEN Sales ELSE 0 END) AS YTD_Sales,
+
+    SUM(CASE 
+            WHEN YEAR(Order_Date) = YEAR(GETDATE())
+            THEN Units ELSE 0 END) AS YTD_Units_Sold
+FROM silver.candy_sales_clean;
+GO
+
+SELECT * FROM gold.vw_sales_performance;
+
+--Monthly Trend Summary
+--Used for sales trend and category breakdowns in Power BI.
+/*
+Use for:
+
+Line chart: Monthly Sales Trend
+
+Clustered column: Division vs Month
+*/
+
+CREATE OR ALTER VIEW gold.vw_monthly_sales_trend AS
+SELECT 
+    YEAR(Order_Date) AS [Year],
+    MONTH(Order_Date) AS [Month],
+    DATENAME(MONTH, Order_Date) AS [Month_Name],
+    Division AS Product_Division,
+    State_Province,
+    Region,
+    SUM(Sales) AS Total_Sales,
+    SUM(Units) AS Total_Units,
+    SUM(Gross_Profit) AS Total_Profit,
+    ROUND(AVG(Cost), 2) AS Avg_Cost
+FROM silver.candy_sales_clean
+GROUP BY 
+    YEAR(Order_Date),
+    MONTH(Order_Date),
+    DATENAME(MONTH, Order_Date),
+    Division,
+    State_Province,
+    Region;
+GO
+
+
+
+--Top 10 Candies (MTD, QTD, YTD)
+/*
+Table: Candy Name | MTD | QTD | YTD |
+*/
+CREATE OR ALTER VIEW gold.vw_top10_candies AS
+SELECT TOP 10
+    Product_Name,
+
+    -- Month-To-Date
+    SUM(CASE 
+            WHEN MONTH(Order_Date) = MONTH(GETDATE()) 
+             AND YEAR(Order_Date) = YEAR(GETDATE())
+            THEN Sales ELSE 0 END) AS MTD_Sales,
+
+    -- Quarter-To-Date
+    SUM(CASE 
+            WHEN DATEPART(QUARTER, Order_Date) = DATEPART(QUARTER, GETDATE())
+             AND YEAR(Order_Date) = YEAR(GETDATE())
+            THEN Sales ELSE 0 END) AS QTD_Sales,
+
+    -- Year-To-Date
+    SUM(CASE 
+            WHEN YEAR(Order_Date) = YEAR(GETDATE())
+            THEN Sales ELSE 0 END) AS YTD_Sales,
+
+    SUM(Gross_Profit) AS Total_Profit
+FROM silver.candy_sales_clean
+GROUP BY Product_Name
+ORDER BY YTD_Sales DESC;
+GO
+
+SELECT * FROM gold.vw_top10_candies;
+
+--Region-Wise Performance
+--Summarizes sales by region and state.
+/*
+Use for:
+
+Map visual: Sales by State
+
+Bar chart: Region vs Sales */
+CREATE OR ALTER VIEW gold.vw_sales_by_region AS
+SELECT 
+    Region,
+    State_Province,
+    SUM(Sales) AS Total_Sales,
+    SUM(Units) AS Total_Units,
+    SUM(Gross_Profit) AS Total_Profit
+FROM silver.candy_sales_clean
+GROUP BY Region, State_Province;
+GO
+
+SELECT * FROM gold.vw_sales_by_region;
+
+
+--Division-Wise Profitability
+--Shows profitability across divisions (e.g., Chocolate, Hard Candy)
+/*
+Use for:
+
+Donut chart → Profit % by Division
+
+KPI → “Most Profitable Division”
+*/
+CREATE OR ALTER VIEW gold.vw_division_performance AS
+SELECT 
+    Division,
+    ROUND(SUM(Sales), 2) AS Total_Sales,
+    ROUND(SUM(Gross_Profit), 2) AS Total_Profit,
+    ROUND(AVG(Cost), 2) AS Avg_Cost_Per_Unit,
+    ROUND((SUM(Gross_Profit) / NULLIF(SUM(Sales), 0)) * 100, 2) AS Profit_Margin_Percent
+FROM silver.candy_sales_clean
+GROUP BY Division
+GO
+
+SELECT * FROM gold.vw_division_performance;
+
+--City-Level Detail
+/*
+Use for:
+
+Table visual: City | State | Sales | Profit
+
+Drill-through from regional summary*/
+CREATE OR ALTER VIEW gold.vw_sales_by_city AS
+SELECT 
+    City,
+    State_Province,
+    SUM(Sales) AS Total_Sales,
+    SUM(Units) AS Total_Units,
+    ROUND(SUM(Gross_Profit), 2) AS Total_Profit
+FROM silver.candy_sales_clean
+GROUP BY City, State_Province
+GO
+
+
+SELECT * FROM gold.vw_sales_by_city;
