@@ -20,6 +20,35 @@ Power BI Dashboard
 
 ---
 
+## Business Problem
+The candy company was facing the following challenges:
+Limited visibility into sales performance across regions and products.
+
+
+Difficulty in identifying top and low-performing products.
+
+
+Inventory imbalance — overstocking in some regions and stockouts in others.
+
+
+Inefficient supply and delivery tracking, leading to delayed orders.
+
+---
+## Project Objective
+The main goal is to build an interactive Power BI dashboard that provides a 360° view of sales, inventory, and supply operations.
+ The objectives include:
+Analyzing sales trends and identifying profitable products.
+
+
+Monitoring inventory to ensure balanced stock levels.
+
+
+Evaluating distributor and factory performance.
+
+
+Supporting faster, insight-driven business decisions.
+
+---
 ## 🟫 Bronze Layer (Raw Data Layer)
 
 **Purpose:**  
